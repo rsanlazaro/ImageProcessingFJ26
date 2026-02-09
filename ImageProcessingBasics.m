@@ -20,7 +20,7 @@ fprintf('================================\n\n');
 
 % Check for Image Processing Toolbox
 if license('test', 'Image_Toolbox')
-    fprintf('✓ Image Processing Toolbox is available\n');
+    fprintf(' Image Processing Toolbox is available\n');
 else
     warning('Image Processing Toolbox not found. Some functions may not work.');
 end
@@ -74,7 +74,7 @@ image_urls = struct(...
 try
     fprintf('Attempting to load JPEG photo from URL...\n');
     jpeg_photo = imread(image_urls.jpeg_photo);
-    fprintf('✓ Successfully loaded JPEG photo\n');
+    fprintf(' Successfully loaded JPEG photo\n');
 catch
     fprintf('! Could not load from URL, creating synthetic photo\n');
     % Create synthetic landscape image
@@ -98,7 +98,7 @@ end
 try
     fprintf('Attempting to load PNG graphic from URL...\n');
     png_graphic = imread(image_urls.png_graphic);
-    fprintf('✓ Successfully loaded PNG graphic\n');
+    fprintf(' Successfully loaded PNG graphic\n');
 catch
     fprintf('! Could not load from URL, creating synthetic PNG\n');
     % Create synthetic logo-style graphic
@@ -166,14 +166,14 @@ title('PNG Image with Transparency', 'FontSize', 14, 'FontWeight', 'bold');
 % Check for alpha channel
 [~, ~, channels] = size(png_graphic);
 if channels == 4
-    fprintf('\n✓ This PNG has an alpha channel (transparency support)\n');
+    fprintf('\n This PNG has an alpha channel (transparency support)\n');
     alpha_channel = png_graphic(:, :, 4);
     fprintf('Alpha channel statistics:\n');
     fprintf('  Min: %d (fully transparent)\n', min(alpha_channel(:)));
     fprintf('  Max: %d (fully opaque)\n', max(alpha_channel(:)));
     fprintf('  Mean: %.1f\n', mean(alpha_channel(:)));
 elseif channels == 3
-    fprintf('\nℹ This PNG doesn''t have transparency (RGB mode)\n');
+    fprintf('\nThis PNG doesn''t have transparency (RGB mode)\n');
 end
 
 %% 6. Array Dimensions Analysis
@@ -191,8 +191,8 @@ fprintf('Shape: [%d, %d, %d]\n', height, width, channels);
 fprintf('  Dimension 1 (height): %d pixels\n', height);
 fprintf('  Dimension 2 (width):  %d pixels\n', width);
 fprintf('  Dimension 3 (channels): %d (R, G, B)\n', channels);
-fprintf('Total pixels: %s\n', num2str(height * width, '%,d'));
-fprintf('Total values: %s\n', num2str(numel(color_array), '%,d'));
+fprintf('Total pixels: %s\n', num2str(height * width));
+fprintf('Total values: %s\n', num2str(numel(color_array)));
 
 fprintf('\n%s\n', repmat('-', 1, 60));
 fprintf('GRAYSCALE IMAGE:\n');
@@ -202,7 +202,7 @@ fprintf('Shape: [%d, %d]\n', height, width);
 fprintf('  Dimension 1 (height): %d pixels\n', height);
 fprintf('  Dimension 2 (width):  %d pixels\n', width);
 fprintf('  Only 1 intensity value per pixel (no separate channels)\n');
-fprintf('Total pixels: %s\n', num2str(numel(gray_array), '%,d'));
+fprintf('Total pixels: %s\n', num2str(numel(gray_array)));
 
 fprintf('\n%s\n', repmat('=', 1, 60));
 fprintf('MEMORY COMPARISON:\n');
@@ -436,7 +436,7 @@ fprintf('%s\n', repmat('=', 1, 60));
 fprintf('Height:   %d pixels\n', height);
 fprintf('Width:    %d pixels\n', width);
 fprintf('Channels: %d\n', channels);
-fprintf('Total pixels: %s\n', num2str(height * width, '%,d'));
+fprintf('Total pixels: %s\n', num2str(height * width));
 
 fprintf('\n%s\n', repmat('=', 1, 60));
 fprintf('CENTER PIXEL at position (%d, %d)\n', center_row, center_col);
@@ -617,14 +617,14 @@ radial = uint8(255 * (1 - min(radius / (img_size/2), 1)));
 figure('Name', 'Synthetic Images', 'Position', [50 50 1600 800]);
 
 images_to_show = {
-    red_img, 'Pure Red\nRGB(255, 0, 0)';
-    green_img, 'Pure Green\nRGB(0, 255, 0)';
-    blue_img, 'Pure Blue\nRGB(0, 0, 255)';
-    yellow_img, 'Yellow\nRGB(255, 255, 0)';
-    gradient_h, 'Horizontal Gradient\nBlack → White';
-    gradient_v, 'Vertical Gradient\nBlack → White';
-    checkerboard_img, 'Checkerboard\n25×25 squares';
-    radial, 'Radial Gradient\nCenter → Edge'
+    red_img, {'Pure Red', 'RGB(255, 0, 0)'};
+    green_img, {'Pure Green', 'RGB(0, 255, 0)'};
+    blue_img, {'Pure Blue', 'RGB(0, 0, 255)'};
+    yellow_img, {'Yellow', 'RGB(255, 255, 0)'};
+    gradient_h, {'Horizontal Gradient', 'Black → White'};
+    gradient_v, {'Vertical Gradient', 'Black → White'};
+    checkerboard_img, {'Checkerboard', '25×25 squares'};
+    radial, {'Radial Gradient', 'Center → Edge'}
 };
 
 for i = 1:8
