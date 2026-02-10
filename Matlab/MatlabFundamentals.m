@@ -1,4 +1,4 @@
-%% MATLAB Fundamentals with Plotting
+%% MATLAB Fundamentals
 % A comprehensive introduction to MATLAB programming with visualization
 % This script covers essential MATLAB concepts along with plotting examples
 %
