@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrainTumorCNN — Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f4f8;
+  --paper:    #fafcff;
+  --ink:      #0a1628;
+  --blue:     #1a56db;
+  --teal:     #0891b2;
+  --amber:    #d97706;
+  --rose:     #be123c;
+  --violet:   #7c3aed;
+  --green:    #059669;
+  --grid:     rgba(26,86,219,0.07);
+  --rule:     rgba(26,86,219,0.15);
+  --muted:    #64748b;
+  --card-bg:  #ffffff;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height: 100vh;
+  padding: 0;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--ink);
+  color: white;
+  padding: 28px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid var(--blue);
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 40px,
+    rgba(255,255,255,0.02) 40px,
+    rgba(255,255,255,0.02) 41px
+  );
+}
+
+.header-left h1 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #e0ecff;
+}
+
+.header-left p {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+}
+
+.header-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  padding: 5px 12px;
+  border-radius: 3px;
+  background: rgba(26,86,219,0.08);
+}
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  gap: 28px;
+  padding: 14px 48px;
+  background: white;
+  border-bottom: 1px solid #dde5f0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.legend-swatch {
+  width: 20px; height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── MAIN CANVAS AREA ── */
+.canvas-wrap {
+  padding: 48px;
+  overflow-x: auto;
+}
+
+/* ── STAGE (one ConvBlock or section) ── */
+.stage-group {
+  margin-bottom: 40px;
+  animation: slideIn 0.5s ease both;
+}
+
+.stage-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stage-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* ── LAYER ROW ── */
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+/* ── LAYER BLOCK ── */
+.layer-block {
+  position: relative;
+  cursor: pointer;
+  transition: filter 0.15s;
+  flex-shrink: 0;
+}
+
+.layer-block:hover { filter: brightness(1.04) drop-shadow(0 4px 16px rgba(0,0,0,0.18)); }
+.layer-block:hover .layer-face { transform: translateY(-2px); }
+.layer-face { transition: transform 0.15s; }
+
+/* ── CONNECTOR ── */
+.connector-line {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  position: relative;
+}
+
+/* ── TOOLTIP ── */
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--ink);
+  color: white;
+  border-radius: 8px;
+  padding: 16px 20px;
+  max-width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.tooltip.visible { opacity: 1; }
+
+.tooltip-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #60a5fa;
+  margin-bottom: 6px;
+}
+
+.tooltip-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.tooltip-shape {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.tooltip-desc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.tooltip-math {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: #7dd3fc;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ── SHAPE EVOLUTION CHART ── */
+.shape-chart {
+  margin: 0 48px 48px;
+  background: white;
+  border: 1px solid #dde5f0;
+  border-radius: 10px;
+  padding: 28px 32px;
+}
+
+.shape-chart h2 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.chart-svg-wrap { overflow-x: auto; }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: flex;
+  gap: 0;
+  margin: 0 48px 48px;
+  border: 1px solid #dde5f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: white;
+}
+
+.stat-box {
+  flex: 1;
+  padding: 20px 24px;
+  border-right: 1px solid #dde5f0;
+}
+.stat-box:last-child { border-right: none; }
+
+.stat-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.stat-lbl {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>BrainTumorCNN</h1>
+    <p>CONVOLUTIONAL NEURAL NETWORK — LAYER ARCHITECTURE</p>
+  </div>
+  <div class="header-badge">4-CLASS MRI CLASSIFIER</div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#1a56db"></div>Conv2d</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#7c3aed"></div>BatchNorm</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#d97706"></div>ReLU</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#059669"></div>MaxPool2d</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#be123c"></div>Avg Pool (GAP)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#0891b2"></div>Linear (FC)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#64748b"></div>Dropout</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#0a1628"></div>Output</div>
+</div>
+
+<!-- MAIN DIAGRAM CANVAS -->
+<div class="canvas-wrap" id="canvas"></div>
+
+<!-- SHAPE EVOLUTION CHART -->
+<div class="shape-chart">
+  <h2>Tensor shape evolution — spatial size (H=W) vs. channel depth</h2>
+  <div class="chart-svg-wrap">
+    <svg id="chart-svg" height="160" style="display:block;"></svg>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat-box"><div class="stat-val">~700 K</div><div class="stat-lbl">Total parameters</div></div>
+  <div class="stat-box"><div class="stat-val">4 blocks</div><div class="stat-lbl">Convolutional stages</div></div>
+  <div class="stat-box"><div class="stat-val">128×128</div><div class="stat-lbl">Input resolution (px)</div></div>
+  <div class="stat-box"><div class="stat-val">3 → 256</div><div class="stat-lbl">Channel growth</div></div>
+  <div class="stat-box"><div class="stat-val">128 → 8</div><div class="stat-lbl">Spatial compression</div></div>
+  <div class="stat-box"><div class="stat-val">4 classes</div><div class="stat-lbl">Glioma · Mening. · None · Pituit.</div></div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-tag" id="tt-tag"></div>
+  <div class="tooltip-name" id="tt-name"></div>
+  <div class="tooltip-shape" id="tt-shape"></div>
+  <div class="tooltip-desc" id="tt-desc"></div>
+  <div class="tooltip-math" id="tt-math"></div>
+</div>
+
+<script>
+// ── LAYER DATA ──────────────────────────────────────────────────────────────
+const COLORS = {
+  conv: '#1a56db', bn: '#7c3aed', relu: '#d97706',
+  pool: '#059669', gap: '#be123c', fc: '#0891b2',
+  drop: '#64748b', out: '#0a1628', inp: '#0f766e',
+};
+
+const STAGES = [
+  {
+    label: 'INPUT',
+    layers: [
+      { id:'inp', name:'Input', tag:'TENSOR', shape:'[B, 3, 128, 128]', color: COLORS.inp, w:64, h:96,
+        desc:'RGB brain MRI image batch. Pixel values normalised to [-1, 1]. Each image is 128×128 pixels with 3 colour channels.',
+        math:'Shape: [Batch, Channels, H, W]\n       [B,  3, 128, 128]' },
+    ]
+  },
+  {
+    label: 'CONVBLOCK 1',
+    layers: [
+      { id:'conv1', name:'Conv2d', tag:'CONV', shape:'[B, 32, 128, 128]', color: COLORS.conv, w:52, h:88,
+        desc:'32 learnable 3×3 filters detect low-level features: edges, intensity gradients, colour transitions. padding=1 preserves spatial dimensions. bias=False — BatchNorm provides the learnable shift.',
+        math:'params: 32 × 3 × 3×3 = 864\nkernel: 3×3, padding: 1, stride: 1' },
+      { id:'bn1', name:'BatchNorm2d', tag:'BN', shape:'[B, 32, 128, 128]', color: COLORS.bn, w:36, h:88,
+        desc:'Normalises each of the 32 channels across the batch. Subtracts batch mean, divides by batch std, then applies learnable γ (scale) and β (shift). Accelerates training and allows higher learning rates.',
+        math:'y = γ(x−μ)/√(σ²+ε) + β\nparams: 64 (γ and β per channel)' },
+      { id:'relu1', name:'ReLU', tag:'ACT', shape:'[B, 32, 128, 128]', color: COLORS.relu, w:28, h:88,
+        desc:'f(x) = max(0, x). Introduces non-linearity — without activation functions, stacked linear layers collapse to a single linear transform. ReLU avoids the vanishing gradient problem common with sigmoid/tanh.',
+        math:'f(x) = max(0, x)\nparams: 0' },
+      { id:'pool1', name:'MaxPool2d', tag:'POOL', shape:'[B, 32, 64, 64]', color: COLORS.pool, w:44, h:72,
+        desc:'2×2 window, stride 2. Keeps the maximum activation in each window, halving H and W (128→64). Provides spatial translation invariance and reduces downstream computation.',
+        math:'out[i,j] = max of 2×2 window\nparams: 0 — spatial: 128→64' },
+    ]
+  },
+  {
+    label: 'CONVBLOCK 2',
+    layers: [
+      { id:'conv2', name:'Conv2d', tag:'CONV', shape:'[B, 64, 64, 64]', color: COLORS.conv, w:52, h:74,
+        desc:'64 filters applied to the 32 feature maps from Block 1. Detects combinations of low-level features: simple textures, corners, curves. Channel depth doubles; spatial size stays the same.',
+        math:'params: 64 × 32 × 3×3 = 18,432\nkernel: 3×3, padding: 1' },
+      { id:'bn2', name:'BatchNorm2d', tag:'BN', shape:'[B, 64, 64, 64]', color: COLORS.bn, w:36, h:74,
+        desc:'Normalises 64 channels. With 64 independent feature detectors, scale variation can be significant. BatchNorm keeps all channels comparable.',
+        math:'params: 128 (64 γ + 64 β)' },
+      { id:'relu2', name:'ReLU', tag:'ACT', shape:'[B, 64, 64, 64]', color: COLORS.relu, w:28, h:74,
+        desc:'On average ~50% of activations become zero. This sparsity provides implicit regularisation and focuses gradient flow on the most informative features.',
+        math:'f(x) = max(0, x)\nparams: 0' },
+      { id:'pool2', name:'MaxPool2d', tag:'POOL', shape:'[B, 64, 32, 32]', color: COLORS.pool, w:44, h:60,
+        desc:'64×64 → 32×32. Each pooling pass makes the network more invariant to small spatial translations. The receptive field of each neuron now spans a larger portion of the input.',
+        math:'params: 0 — spatial: 64→32' },
+    ]
+  },
+  {
+    label: 'CONVBLOCK 3',
+    layers: [
+      { id:'conv3', name:'Conv2d', tag:'CONV', shape:'[B, 128, 32, 32]', color: COLORS.conv, w:52, h:60,
+        desc:'128 filters detecting mid-level features: rounded shapes, textured regions, tumour boundary signatures. The effective receptive field now covers a substantial area of the original MRI.',
+        math:'params: 128 × 64 × 3×3 = 73,728\nkernel: 3×3, padding: 1' },
+      { id:'bn3', name:'BatchNorm2d', tag:'BN', shape:'[B, 128, 32, 32]', color: COLORS.bn, w:36, h:60,
+        desc:'128 channel normalisation. BatchNorm becomes increasingly important at depth — without it, small scale mismatches compound across blocks and destabilise training.',
+        math:'params: 256' },
+      { id:'relu3', name:'ReLU', tag:'ACT', shape:'[B, 128, 32, 32]', color: COLORS.relu, w:28, h:60,
+        desc:'Non-linearity after every normalisation. The Conv→BN→ReLU pattern is the canonical CNN building block, proven across thousands of computer vision studies.',
+        math:'params: 0' },
+      { id:'pool3', name:'MaxPool2d', tag:'POOL', shape:'[B, 128, 16, 16]', color: COLORS.pool, w:44, h:48,
+        desc:'32×32 → 16×16. Resolution is now 1/8 of the input. The network has traded spatial precision for semantic richness — 128 abstract feature maps at coarser resolution.',
+        math:'params: 0 — spatial: 32→16' },
+    ]
+  },
+  {
+    label: 'CONVBLOCK 4  (deepest)',
+    layers: [
+      { id:'conv4', name:'Conv2d', tag:'CONV', shape:'[B, 256, 16, 16]', color: COLORS.conv, w:52, h:48,
+        desc:'256 filters. At this depth the receptive field spans the whole image. Filters detect high-level, class-discriminative patterns: tumour mass shapes, abnormal intensity distributions, tissue boundary signatures.',
+        math:'params: 256 × 128 × 3×3 = 294,912\nkernel: 3×3, padding: 1' },
+      { id:'bn4', name:'BatchNorm2d', tag:'BN', shape:'[B, 256, 16, 16]', color: COLORS.bn, w:36, h:48,
+        desc:'With 256 channels the scale variation is substantial. BatchNorm ensures no single channel dominates the gradient signal flowing back through the network.',
+        math:'params: 512' },
+      { id:'relu4', name:'ReLU', tag:'ACT', shape:'[B, 256, 16, 16]', color: COLORS.relu, w:28, h:48,
+        desc:'Final activation in the convolutional backbone. Output: 256 rich feature maps encoding high-level MRI structure, ready for global pooling.',
+        math:'params: 0' },
+      { id:'pool4', name:'MaxPool2d', tag:'POOL', shape:'[B, 256, 8, 8]', color: COLORS.pool, w:44, h:38,
+        desc:'16×16 → 8×8. Produces 256 maps of 8×8 = 16,384 total values per sample — now compressed to the 256 global statistics by the next layer.',
+        math:'params: 0 — spatial: 16→8' },
+    ]
+  },
+  {
+    label: 'POOLING',
+    layers: [
+      { id:'gap', name:'AdaptiveAvgPool2d', tag:'GAP', shape:'[B, 256, 1, 1]', color: COLORS.gap, w:56, h:38,
+        desc:'Global Average Pooling. Computes the mean of each 8×8 feature map → one scalar per channel. Reduces 16,384 values to just 256. Dramatically fewer parameters than flattening, better generalisation. Also makes the network resolution-agnostic.',
+        math:'out[c] = mean(feature_map[c])\nparams: 0  |  16,384 → 256 values' },
+      { id:'flat', name:'Flatten', tag:'FLAT', shape:'[B, 256]', color: COLORS.gap, w:36, h:38,
+        desc:'Removes the trivial 1×1 spatial dimensions. Reshapes [B, 256, 1, 1] → [B, 256] so data flows into the Linear layers.',
+        math:'params: 0' },
+    ]
+  },
+  {
+    label: 'CLASSIFIER HEAD',
+    layers: [
+      { id:'fc1', name:'Linear', tag:'FC', shape:'[B, 128]', color: COLORS.fc, w:52, h:52,
+        desc:'Fully connected: each of the 128 output neurons connects to all 256 inputs. Learns to combine global feature statistics into class-discriminative representations.',
+        math:'y = Wx + b\nparams: 256×128 + 128 = 32,896' },
+      { id:'bn5', name:'BatchNorm1d', tag:'BN', shape:'[B, 128]', color: COLORS.bn, w:36, h:52,
+        desc:'Normalises the 128 hidden units. Especially important here: the scale of activations after the first Linear layer can vary across samples and training epochs.',
+        math:'params: 256' },
+      { id:'relu5', name:'ReLU', tag:'ACT', shape:'[B, 128]', color: COLORS.relu, w:28, h:52,
+        desc:'Without this activation, the two Linear layers would collapse to a single linear transformation regardless of depth.',
+        math:'f(x) = max(0, x)' },
+      { id:'drop', name:'Dropout p=0.5', tag:'DROP', shape:'[B, 128]', color: COLORS.drop, w:50, h:52,
+        desc:'Randomly zeroes 50% of neurons each forward pass during training. Forces the network to learn redundant, robust representations. Inactive at inference (.eval() mode).',
+        math:'E[out] = E[in] (unbiased)\nparams: 0' },
+      { id:'fc2', name:'Linear', tag:'FC', shape:'[B, 4]', color: COLORS.fc, w:42, h:52,
+        desc:'Final projection from 128 features to 4 raw logits — one per class. No activation: CrossEntropyLoss applies LogSoftmax internally during training. At inference, apply torch.softmax() to get probabilities.',
+        math:'params: 128×4 + 4 = 516\noutput: [glioma, meningioma, notumor, pituit.]' },
+    ]
+  },
+  {
+    label: 'OUTPUT',
+    layers: [
+      { id:'out', name:'Softmax', tag:'OUTPUT', shape:'[B, 4] probabilities', color: COLORS.out, w:64, h:64,
+        desc:'Applied at inference time only. Converts raw logits to a probability distribution summing to 1.0. Predicted class = argmax(probabilities).',
+        math:'p_c = exp(z_c) / Σ exp(z_k)\n\nGlioma | Meningioma | No Tumor | Pituitary' },
+    ]
+  },
+];
+
+// ── RENDER STAGES ────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const tt     = document.getElementById('tooltip');
+
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function makeSvgLayer(layer, animDelay) {
+  const W = layer.w, H = layer.h;
+  const depth = 14; // 3D depth offset
+
+  // colours
+  const face  = layer.color;
+  const faceL = hexToRgba(layer.color, 0.75);
+  const faceT = hexToRgba(layer.color, 0.55);
+  const faceB = hexToRgba(layer.color, 0.35);
+
+  const svgW = W + depth + 4;
+  const svgH = H + depth + 4;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', svgH);
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+  svg.style.overflow = 'visible';
+
+  // front face
+  const front = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  front.setAttribute('x', 2);
+  front.setAttribute('y', depth + 2);
+  front.setAttribute('width', W);
+  front.setAttribute('height', H);
+  front.setAttribute('rx', 3);
+  front.setAttribute('fill', face);
+  front.setAttribute('class', 'layer-face');
+
+  // top face
+  const top = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  top.setAttribute('points', `2,${depth+2} ${depth+2},2 ${W+depth+2},2 ${W+2},${depth+2}`);
+  top.setAttribute('fill', faceT);
+
+  // right face
+  const right = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  right.setAttribute('points', `${W+2},${depth+2} ${W+depth+2},2 ${W+depth+2},${H+2} ${W+2},${H+depth+2}`);
+  right.setAttribute('fill', faceL);
+
+  // bottom face (optional highlight)
+  const bot = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  bot.setAttribute('points', `2,${H+depth+2} ${W+2},${H+depth+2} ${W+depth+2},${H+2} ${depth+2},${H+2}`);
+  bot.setAttribute('fill', faceB);
+
+  // text on front
+  const textGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+  textGroup.setAttribute('transform', `translate(${2 + W/2}, ${depth + 2 + H/2})`);
+
+  const tagT = document.createElementNS('http://www.w3.org/2000/svg','text');
+  tagT.setAttribute('text-anchor','middle');
+  tagT.setAttribute('dominant-baseline','middle');
+  tagT.setAttribute('y', H > 60 ? -16 : -10);
+  tagT.setAttribute('fill','rgba(255,255,255,0.6)');
+  tagT.setAttribute('font-family',"'IBM Plex Mono', monospace");
+  tagT.setAttribute('font-size','7');
+  tagT.setAttribute('font-weight','600');
+  tagT.setAttribute('letter-spacing','1.5');
+  tagT.textContent = layer.tag;
+
+  const nameT = document.createElementNS('http://www.w3.org/2000/svg','text');
+  nameT.setAttribute('text-anchor','middle');
+  nameT.setAttribute('dominant-baseline','middle');
+  nameT.setAttribute('y', H > 60 ? 2 : 2);
+  nameT.setAttribute('fill','white');
+  nameT.setAttribute('font-family',"'IBM Plex Mono', monospace");
+  nameT.setAttribute('font-size', W > 50 ? '8.5' : '7.5');
+  nameT.setAttribute('font-weight','700');
+  // wrap name if needed
+  const words = layer.name.split(' ');
+  if (words.length > 1 && W > 40) {
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg','tspan');
+    t1.setAttribute('x','0'); t1.setAttribute('dy','-6');
+    t1.textContent = words.slice(0,Math.ceil(words.length/2)).join(' ');
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg','tspan');
+    t2.setAttribute('x','0'); t2.setAttribute('dy','12');
+    t2.textContent = words.slice(Math.ceil(words.length/2)).join(' ');
+    nameT.appendChild(t1); nameT.appendChild(t2);
+  } else {
+    nameT.textContent = layer.name;
+  }
+
+  const shapeT = document.createElementNS('http://www.w3.org/2000/svg','text');
+  shapeT.setAttribute('text-anchor','middle');
+  shapeT.setAttribute('dominant-baseline','middle');
+  shapeT.setAttribute('y', H > 60 ? 18 : 14);
+  shapeT.setAttribute('fill','rgba(255,255,255,0.55)');
+  shapeT.setAttribute('font-family',"'IBM Plex Mono', monospace");
+  shapeT.setAttribute('font-size','6.5');
+  shapeT.textContent = layer.shape.replace(/\[B, /,'').replace(']','');
+
+  textGroup.appendChild(tagT);
+  textGroup.appendChild(nameT);
+  if (H > 40) textGroup.appendChild(shapeT);
+
+  svg.appendChild(bot);
+  svg.appendChild(right);
+  svg.appendChild(top);
+  svg.appendChild(front);
+  svg.appendChild(textGroup);
+
+  svg.style.animation = `slideIn 0.4s ${animDelay}ms ease both`;
+  svg.style.cursor = 'pointer';
+
+  // tooltip events
+  svg.addEventListener('mouseenter', (e) => showTT(layer, e));
+  svg.addEventListener('mousemove',  (e) => moveTT(e));
+  svg.addEventListener('mouseleave', hideTT);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-block';
+  wrap.appendChild(svg);
+  return wrap;
+}
+
+function makeArrow() {
+  const wrap = document.createElement('div');
+  wrap.className = 'connector-line';
+  wrap.innerHTML = `<svg width="32" height="20" viewBox="0 0 32 20">
+    <line x1="0" y1="10" x2="26" y2="10" stroke="#b0bec5" stroke-width="1.5"/>
+    <polyline points="21,5 27,10 21,15" fill="none" stroke="#b0bec5" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>`;
+  return wrap;
+}
+
+let delay = 0;
+STAGES.forEach(stage => {
+  const group = document.createElement('div');
+  group.className = 'stage-group';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'stage-label';
+  lbl.textContent = stage.label;
+  group.appendChild(lbl);
+
+  const row = document.createElement('div');
+  row.className = 'layer-row';
+
+  stage.layers.forEach((layer, i) => {
+    if (i > 0) row.appendChild(makeArrow());
+    row.appendChild(makeSvgLayer(layer, delay));
+    delay += 50;
+  });
+
+  group.appendChild(row);
+  canvas.appendChild(group);
+});
+
+// ── TOOLTIP ──────────────────────────────────────────────────────────────────
+function showTT(layer, e) {
+  document.getElementById('tt-tag').textContent   = layer.tag;
+  document.getElementById('tt-name').textContent  = layer.name;
+  document.getElementById('tt-shape').textContent = 'Output: ' + layer.shape;
+  document.getElementById('tt-desc').textContent  = layer.desc;
+  document.getElementById('tt-math').textContent  = layer.math;
+  moveTT(e);
+  tt.classList.add('visible');
+}
+function moveTT(e) {
+  const x = e.clientX + 16, y = e.clientY - 10;
+  const tw = 340, th = 200;
+  tt.style.left = (x + tw > window.innerWidth ? x - tw - 30 : x) + 'px';
+  tt.style.top  = (y + th > window.innerHeight ? y - th : y) + 'px';
+}
+function hideTT() { tt.classList.remove('visible'); }
+
+// ── SHAPE EVOLUTION CHART ────────────────────────────────────────────────────
+const STEPS = [
+  { label:'Input',   spatial:128, channels:3   },
+  { label:'B1 Conv', spatial:128, channels:32  },
+  { label:'B1 Pool', spatial:64,  channels:32  },
+  { label:'B2 Conv', spatial:64,  channels:64  },
+  { label:'B2 Pool', spatial:32,  channels:64  },
+  { label:'B3 Conv', spatial:32,  channels:128 },
+  { label:'B3 Pool', spatial:16,  channels:128 },
+  { label:'B4 Conv', spatial:16,  channels:256 },
+  { label:'B4 Pool', spatial:8,   channels:256 },
+  { label:'GAP',     spatial:1,   channels:256 },
+  { label:'FC1',     spatial:null, channels:128 },
+  { label:'FC2',     spatial:null, channels:4   },
+];
+
+const chartSvg  = document.getElementById('chart-svg');
+const SW        = Math.max(window.innerWidth - 200, 900);
+const SH        = 160;
+const padL = 56, padR = 20, padT = 16, padB = 40;
+const innerW = SW - padL - padR;
+const innerH = SH - padT - padB;
+chartSvg.setAttribute('width', SW);
+
+const maxSpatial   = 128;
+const maxChannels  = 256;
+const stepX = innerW / (STEPS.length - 1);
+
+function ns(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+function el(tag, attrs, parent) {
+  const e = ns(tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// Grid
+for (let i = 0; i <= 4; i++) {
+  const y = padT + innerH - (i/4)*innerH;
+  el('line', { x1:padL, y1:y, x2:padL+innerW, y2:y, stroke:'#dde5f0', 'stroke-width':'1' }, chartSvg);
+  el('text', { x:padL-6, y:y+4, 'text-anchor':'end', fill:'#94a3b8',
+    'font-family':"'IBM Plex Mono',monospace", 'font-size':'8' }, chartSvg)
+    .textContent = Math.round(maxChannels*(i/4));
+}
+
+// Spatial line (dashed, teal)
+const spatialPts = STEPS
+  .filter(s => s.spatial !== null)
+  .map((s, i) => {
+    const xi = STEPS.indexOf(s);
+    return `${padL + xi*stepX},${padT + innerH - (s.spatial/maxSpatial)*innerH}`;
+  }).join(' ');
+
+el('polyline', {
+  points: spatialPts,
+  fill:'none', stroke:'#0891b2', 'stroke-width':'2',
+  'stroke-dasharray':'5,3', opacity:'0.7'
+}, chartSvg);
+
+// Channel line (solid, blue)
+const chanPts = STEPS.map((s,i) =>
+  `${padL + i*stepX},${padT + innerH - (s.channels/maxChannels)*innerH}`
+).join(' ');
+
+el('polyline', {
+  points: chanPts,
+  fill:'none', stroke:'#1a56db', 'stroke-width':'2.5'
+}, chartSvg);
+
+// Dots and labels
+STEPS.forEach((s, i) => {
+  const x = padL + i * stepX;
+  const cy = padT + innerH - (s.channels/maxChannels)*innerH;
+  el('circle', { cx:x, cy:cy, r:'4', fill:'#1a56db' }, chartSvg);
+
+  if (s.spatial !== null) {
+    const sy = padT + innerH - (s.spatial/maxSpatial)*innerH;
+    el('circle', { cx:x, cy:sy, r:'3', fill:'#0891b2' }, chartSvg);
+  }
+
+  // step label
+  const txt = el('text', {
+    x: x, y: SH - 6,
+    'text-anchor':'middle', fill:'#64748b',
+    'font-family':"'IBM Plex Mono',monospace", 'font-size':'7.5'
+  }, chartSvg);
+  txt.textContent = s.label;
+});
+
+// Legend
+el('line', { x1:padL, y1:12, x2:padL+28, y2:12, stroke:'#1a56db', 'stroke-width':'2.5' }, chartSvg);
+el('text', { x:padL+34, y:16, fill:'#1a56db', 'font-family':"'IBM Plex Mono',monospace", 'font-size':'8', 'font-weight':'600' }, chartSvg).textContent = 'Channels';
+el('line', { x1:padL+96, y1:12, x2:padL+124, y2:12, stroke:'#0891b2', 'stroke-width':'2', 'stroke-dasharray':'5,3' }, chartSvg);
+el('text', { x:padL+130, y:16, fill:'#0891b2', 'font-family':"'IBM Plex Mono',monospace", 'font-size':'8', 'font-weight':'600' }, chartSvg).textContent = 'Spatial size H=W';
+
+// y-axis label
+const yLabel = el('text', { x: 10, y: padT + innerH/2, 'text-anchor':'middle',
+  fill:'#94a3b8', 'font-family':"'IBM Plex Mono',monospace", 'font-size':'8',
+  transform:`rotate(-90,10,${padT+innerH/2})` }, chartSvg);
+yLabel.textContent = 'Value';
+</script>
+</body>
+</html>
